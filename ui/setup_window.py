@@ -69,12 +69,12 @@ class SetupWindow(QDialog):
     def open_browser(self, url):
         try:
             if sys.platform == "win32":
-                cmd = 'start "" "{}"'.format(url)
-                subprocess.Popen(cmd, shell=True)
+                os.startfile(url) 
             else:
                 webbrowser.open(url)
         except Exception as e:
             logger.error(f"Failed to open browser: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open browser: {e}")
 
 
 
