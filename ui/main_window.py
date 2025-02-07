@@ -44,7 +44,7 @@ class MainWindow(QDialog):
                 )
                 self.token_info = self.sp_oauth.get_cached_token()
             except Exception as e:
-                logger.error(f"Failed to authenticate: {e}")
+                logger.error(f"Failed to authenticate: {str(e)}")
                 QMessageBox.critical(self, "Error", "Failed to authenticate: Please run the setup again.")
                 self.sp_oauth = None
                 self.token_info = None
@@ -63,7 +63,7 @@ class MainWindow(QDialog):
                 os.remove(CONFIG_FILE)
                 QMessageBox.information(self, "Clear Config", "Configuration cleared successfully!")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to clear config: {e}")
+                QMessageBox.critical(self, "Error", "Failed to clear configuration. See logs for more details.")
         else:
             QMessageBox.information(self, "Clear Config", "No configuration file exists.")
 

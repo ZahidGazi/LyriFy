@@ -14,7 +14,7 @@ def save_config(config):
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=4)
     except Exception as e:
-        logger.error(f"Error saving config: {e}")
+        logger.error(f"Error saving config: {str(e)}")
 
 def load_config():
     """Load configuration from AppData"""
@@ -23,6 +23,6 @@ def load_config():
             with open(CONFIG_FILE, "r") as f:
                 return json.load(f)
         except Exception as e:
-            logger.error(f"Error loading config: {e}")
+            logger.error(f"Error loading config: {str(e)}")
             return {}
     return {}

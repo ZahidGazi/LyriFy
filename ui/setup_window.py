@@ -73,8 +73,8 @@ class SetupWindow(QDialog):
             else:
                 webbrowser.open(url)
         except Exception as e:
-            logger.error(f"Failed to open browser: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to open browser: {e}")
+            logger.error(f"Failed to open browser: {str(e)}")
+            QMessageBox.critical(self, "Error", "Failed to open browser. see logs for more details.")
 
 
 
@@ -141,7 +141,7 @@ class SetupWindow(QDialog):
                 self.sp_oauth = None
                 self.token_info = None
             except Exception as e:
-                logger.error(f"Failed to clear config: {e}")
-                QMessageBox.critical(self, "Error", f"Failed to clear config: {e}")
+                logger.error(f"Failed to clear config: {str(e)}")
+                QMessageBox.critical(self, "Error", "Failed to clear configuration. See logs for more details.")
         else:
             QMessageBox.information(self, "Clear Config", "No configuration file exists.")
