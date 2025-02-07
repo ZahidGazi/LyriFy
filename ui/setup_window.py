@@ -69,7 +69,6 @@ class SetupWindow(QDialog):
     def open_browser(self, url):
         try:
             if sys.platform == "win32":
-                # Build a single command string with proper quoting.
                 cmd = 'start "" "{}"'.format(url)
                 subprocess.Popen(cmd, shell=True)
             else:
@@ -124,7 +123,7 @@ class SetupWindow(QDialog):
 
     def add_widget(self):
         self.hide()
-        # Import LyricsOverlay here to avoid circular dependency
+        # Import LyricsOverlay here to avoid circular dependency (imp hehe)
         from ui.lyrics_overlay import LyricsOverlay
         self.lyrics_overlay = LyricsOverlay(self.sp_oauth, self.token_info)
         self.lyrics_overlay.show()
