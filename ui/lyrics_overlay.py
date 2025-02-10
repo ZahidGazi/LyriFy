@@ -2,7 +2,7 @@ import requests
 import spotipy
 from PyQt6.QtWidgets import QLabel, QHBoxLayout, QWidget, QPushButton, QStyle, QApplication, QMessageBox
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 
 from logger import logger
 class LyricsOverlay(QLabel):
@@ -71,21 +71,43 @@ class LyricsOverlay(QLabel):
         self.control_div.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
         self.control_div.setGeometry(0, self.height() - control_div_height, self.width(), control_div_height)
         layout = QHBoxLayout(self.control_div)
-        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setContentsMargins(10, 10, 10, 0)
         layout.setSpacing(5)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.refresh_button = QPushButton(self.control_div)
-        refresh_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload)
+        refresh_icon = QIcon("res/refresh.ico")  # Ensure this file exists
         self.refresh_button.setIcon(refresh_icon)
-        self.refresh_button.setStyleSheet("background-color: transparent; color: cyan; border: none;")
+        self.refresh_button.setFixedSize(20, 20)
+        self.refresh_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 255, 255, 0.3); /* light cyan glow */
+                border-radius: 5px;
+            }
+        """)
         self.refresh_button.clicked.connect(self.do_refresh)
         layout.addWidget(self.refresh_button)
 
         self.exit_button = QPushButton(self.control_div)
-        exit_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserStop)
-        self.exit_button.setIcon(exit_icon)
-        self.exit_button.setStyleSheet("background-color: transparent; color: cyan; border: none;")
+        close_icon = QIcon("res/close.ico")  # Ensure this file exists
+        self.exit_button.setIcon(close_icon)
+        self.exit_button.setFixedSize(20, 20)
+        self.exit_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 0, 0, 0.3); /* light red glow */
+                border-radius: 5px;
+            }
+        """)
         self.exit_button.clicked.connect(QApplication.quit)
         layout.addWidget(self.exit_button)
 
@@ -134,6 +156,19 @@ class LyricsOverlay(QLabel):
             self.lyrics_data = self.get_song_lyrics(song, artist)
             self.current_time = self.get_current_playback_time()
 
+    @staticmethod
+    def format_text(text, max_length=25):
+        result = ""
+        while len(text) > max_length:
+            space_index = text[:max_length].rfind(" ")
+            if space_index != -1:
+                result += text[:space_index] + "<br/>"
+                text = text[space_index + 1:]
+            else:
+                result += text[:max_length] + "<br/>"
+                text = text[max_length:]
+        return result + text
+
     def update_lyrics(self):
         if self.idleSearch > 5:
             self.setText("<p style='font-size:20px; color:orange;'>No song playing...</p>"
@@ -146,23 +181,15 @@ class LyricsOverlay(QLabel):
         elif self.lyrics_data:
             for i, lyric in enumerate(reversed(self.lyrics_data)):
                 if lyric["seconds"] <= self.current_time:
-                    current_lyric = lyric["lyrics"]
-                    formatted_lyric = ""
-                    while len(current_lyric) > 25:
-                        space_index = current_lyric[:25].rfind(" ")
-                        if space_index != -1:
-                            formatted_lyric += current_lyric[:space_index] + "<br/>"
-                            current_lyric = current_lyric[space_index+1:]
-                        else:
-                            formatted_lyric += current_lyric[:25] + "<br/>"
-                            current_lyric = current_lyric[25:]
-                    formatted_lyric += current_lyric
-                    previous_line = self.lyrics_data[-(i+2)]["lyrics"] if i+1 < len(self.lyrics_data) else ""
+                    formatted_current = self.format_text(lyric["lyrics"])
+                    prev_line = self.lyrics_data[-(i + 2)]["lyrics"] if i + 1 < len(self.lyrics_data) else ""
+                    formatted_prev = self.format_text(prev_line, 50) if prev_line else ""
                     next_line = self.lyrics_data[-i]["lyrics"] if i > 0 else ""
+                    formatted_next = self.format_text(next_line, 50) if next_line else ""
                     self.setText(
-                        f"<p style='font-size:15px; color:gray;'>{previous_line}</p>"
-                        f"<p style='font-size:25px; color:cyan;'>{formatted_lyric}</p>"
-                        f"<p style='font-size:15px; color:gray;'>{next_line}</p>"
+                        f"<p style='font-size:15px; color:gray;'>{formatted_prev}</p>"
+                        f"<p style='font-size:25px; color:cyan;'>{formatted_current}</p>"
+                        f"<p style='font-size:15px; color:gray;'>{formatted_next}</p>"
                     )
                     break
         else:
