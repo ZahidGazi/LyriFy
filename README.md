@@ -65,7 +65,7 @@ You can package the application into a standalone executable using [PyInstaller]
    ```
 2. **Build the EXE:**
    ```bash
-   pyinstaller --onefile --noconsole --windowed --name LyriFy main.py --icon=icon.ico
+   pyinstaller --onefile --noconsole --windowed --name LyriFy main.py --icon=res/icon.ico
    ```
    - The resulting executable will be in the `dist` folder.
 

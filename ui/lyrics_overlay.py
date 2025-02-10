@@ -107,7 +107,7 @@ class LyricsOverlay(QLabel):
         except Exception as e:
             self.idleSearch += 1
             logger.error(f"Exception in get_current_song: {str(e)}")
-            QMessageBox.critical(self, "Error", "An error occurred while sending request to spotify api, could be network issue. see logs for more details. ")
+            QMessageBox.critical(None, "Error", "An error occurred while sending request to spotify api, could be network issue, try refreshing. see logs for more details. ")
         return None, None
 
     def get_song_lyrics(self, song, artist):
@@ -121,7 +121,7 @@ class LyricsOverlay(QLabel):
                     return data
         except Exception as e:
             logger.error(f"Exception in get_song_lyrics: {str(e)}")
-            QMessageBox.critical(self, "Error", "An error occurred while fetching lyrics, could be network issue. see logs for more details. ")
+            QMessageBox.critical(None, "Error", "An error occurred while fetching lyrics, could be network issue, try refreshing. see logs for more details. ")
         return []
 
     def fetch_song_and_lyrics(self):

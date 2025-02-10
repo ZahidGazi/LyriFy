@@ -10,7 +10,7 @@ class MainWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("LyriFy")
-        self.setWindowIcon(QIcon("icon.ico"))
+        self.setWindowIcon(QIcon("res/icon.ico"))
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.resize(300, 200)
