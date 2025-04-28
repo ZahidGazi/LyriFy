@@ -13,7 +13,8 @@ class LyricsOverlay(QLabel):
             token_info = sp_oauth.get_cached_token()
         if not token_info:
             raise Exception("No token info available. Ensure authentication is complete.")
-        self.spotify = spotipy.Spotify(auth=token_info["access_token"])
+        # Use auth_manager for automatic token refresh
+        self.spotify = spotipy.Spotify(auth_manager=sp_oauth)
 
         self._configure_window()
         self._configure_font_and_style()
