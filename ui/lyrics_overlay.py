@@ -57,11 +57,12 @@ class LyricsOverlay(QLabel):
         self.song_duration = 0
         self.isRefreshed = False
         self.idleSearch = 0
+        self.update_count = 0
 
     def _setup_timers(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_lyrics)
-        self.timer.start(1000)
+        self.timer.start(500)
 
         self.song_timer = QTimer(self)
         self.song_timer.timeout.connect(self.fetch_song_and_lyrics)
@@ -199,6 +200,7 @@ class LyricsOverlay(QLabel):
             self.fetch_song_and_lyrics()
         if self.isRefreshed:
             self.setText("<p style='font-size:20px; color:orange;'>Refreshing...</p>")
+            return
         elif self.lyrics_data:
             current_lyric_index = self._find_current_lyric_index()
             if current_lyric_index is not None:
@@ -213,6 +215,13 @@ class LyricsOverlay(QLabel):
                 )
         else:
             self.setText("<p style='font-size:20px; color:cyan;'>No lyrics found.</p>")
+
+        # Sync time every 20 updates (10 seconds)
+        self.update_count = (self.update_count + 1) % 20
+        if self.update_count == 0:
+            self.current_time = self.get_current_playback_time()
+        else:
+            self.current_time += 0.5
 
     def _find_current_lyric_index(self):
         """Find the index of the current lyric based on the current playback time."""
