@@ -181,22 +181,42 @@ class LyricsOverlay(QLabel):
         if self.isRefreshed:
             self.setText("<p style='font-size:20px; color:orange;'>Refreshing...</p>")
         elif self.lyrics_data:
-            for i, lyric in enumerate(reversed(self.lyrics_data)):
-                if lyric["seconds"] <= self.current_time:
-                    formatted_current = self.format_text(lyric["lyrics"])
-                    prev_line = self.lyrics_data[-(i + 2)]["lyrics"] if i + 1 < len(self.lyrics_data) else ""
-                    formatted_prev = self.format_text(prev_line, 50) if prev_line else ""
-                    next_line = self.lyrics_data[-i]["lyrics"] if i > 0 else ""
-                    formatted_next = self.format_text(next_line, 50) if next_line else ""
-                    self.setText(
-                        f"<p style='font-size:15px; color:gray;'>{formatted_prev}</p>"
-                        f"<p style='font-size:25px; color:cyan;'>{formatted_current}</p>"
-                        f"<p style='font-size:15px; color:gray;'>{formatted_next}</p>"
-                    )
-                    break
+            current_lyric_index = self._find_current_lyric_index()
+            if current_lyric_index is not None:
+                formatted_prev = self._get_formatted_lyric(current_lyric_index - 1, 50)
+                formatted_current = self._get_formatted_lyric(current_lyric_index, 25)
+                formatted_next = self._get_formatted_lyric(current_lyric_index + 1, 50)
+
+                self.setText(
+                    f"<p style='font-size:15px; color:gray;'>{formatted_prev}</p>"
+                    f"<p style='font-size:25px; color:cyan;'>{formatted_current}</p>"
+                    f"<p style='font-size:15px; color:gray;'>{formatted_next}</p>"
+                )
         else:
             self.setText("<p style='font-size:20px; color:cyan;'>No lyrics found.</p>")
-        self.current_time += 1
+
+    def _find_current_lyric_index(self):
+        """Find the index of the current lyric based on the current playback time."""
+        for i, lyric in enumerate(reversed(self.lyrics_data)):
+            if lyric["seconds"] <= self.current_time:
+                # Convert from reversed index to actual index in self.lyrics_data
+                return len(self.lyrics_data) - i - 1
+        return None
+
+    def _get_formatted_lyric(self, index, max_length=25):
+        """Get and format a lyric at the specified index.
+
+        Args:
+            index: The index of the lyric in self.lyrics_data
+            max_length: Maximum line length before wrapping
+
+        Returns:
+            Formatted lyric text or empty string if index is invalid
+        """
+        if 0 <= index < len(self.lyrics_data):
+            lyric_text = self.lyrics_data[index]["lyrics"]
+            return self.format_text(lyric_text, max_length)
+        return ""
 
     def get_current_playback_time(self):
         track = self.spotify.currently_playing()
