@@ -77,6 +77,11 @@ class LyricsOverlay(QLabel):
         layout.setSpacing(5)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        self.time_label = QLabel(self.control_div)
+        self.time_label.setStyleSheet("color: white; font-weight: bold; font-size: 12px;")
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+        layout.addWidget(self.time_label)
+
         self.refresh_button = QPushButton(self.control_div)
         refresh_icon = QIcon("res/refresh.ico")  # Ensure this file exists
         self.refresh_button.setIcon(refresh_icon)
@@ -171,7 +176,21 @@ class LyricsOverlay(QLabel):
                 text = text[max_length:]
         return result + text
 
+    def format_time(self, seconds):
+        """Convert seconds to MM:SS format"""
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes}:{seconds:02d}"
+
     def update_lyrics(self):
+        # Update time display
+        if self.song_duration > 0:
+            current_formatted = self.format_time(self.current_time)
+            duration_formatted = self.format_time(self.song_duration / 1000)  # Convert ms to seconds
+            self.time_label.setText(f"{current_formatted} / {duration_formatted}")
+        else:
+            self.time_label.setText("0:00 / 0:00")
+
         if self.idleSearch > 5:
             self.setText("<p style='font-size:20px; color:orange;'>No song playing...</p>"
                          "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>")
