@@ -21,6 +21,9 @@ from logger import logger
 class LyricsAPI:
     """Handles fetching lyrics from various API sources."""
 
+    _lrclib_session = requests.Session()
+    _textyl_session = requests.Session()
+
     @staticmethod
     def fetch_lyrics(song, album, artist, duration):
         """
@@ -66,7 +69,7 @@ class LyricsAPI:
                 "album_name": album,
                 "duration": int(duration / 1000),  # Convert ms to seconds
             }
-            response = requests.get(lrclib_cache_url, params=params)
+            response = LyricsAPI._lrclib_session.get(lrclib_cache_url, params=params)
             if response.status_code == 200:
                 data = response.json()
                 if data:
@@ -86,7 +89,7 @@ class LyricsAPI:
                 "album_name": album,
                 "duration": int(duration / 1000),  # Convert ms to seconds
             }
-            response = requests.get(lrclib_url, params=params)
+            response = LyricsAPI._lrclib_session.get(lrclib_url, params=params)
             if response.status_code == 200:
                 data = response.json()
                 if data:
@@ -103,7 +106,7 @@ class LyricsAPI:
                 warnings.simplefilter("ignore", InsecureRequestWarning)
                 query = f"{song} {artist}"
                 url = f"https://api.textyl.co/api/lyrics?q={query}"
-                response = requests.get(url, verify=False)
+                response = LyricsAPI._textyl_session.get(url, verify=False)
                 if response.status_code == 200:
                     data = response.json()
                     if data:
@@ -176,7 +179,8 @@ class SpotifyPlayer:
         Args:
             sp_oauth: SpotifyOAuth instance for authentication
         """
-        self.spotify = spotipy.Spotify(auth_manager=sp_oauth)
+        session = requests.Session()
+        self.spotify = spotipy.Spotify(auth_manager=sp_oauth, requests_session=session)
 
     def get_current_song(self):
         """
