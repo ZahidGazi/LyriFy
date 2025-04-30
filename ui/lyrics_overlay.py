@@ -2,14 +2,21 @@ import warnings
 
 import requests
 import spotipy
-from PyQt6.QtWidgets import QLabel, QHBoxLayout, QWidget, QPushButton, QStyle, QApplication, QMessageBox
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QWidget,
+)
 from urllib3.exceptions import InsecureRequestWarning
 
 import globals
-
 from logger import logger
+
 
 class LyricsAPI:
     """Handles fetching lyrics from various API sources."""
@@ -57,7 +64,7 @@ class LyricsAPI:
                 "track_name": song,
                 "artist_name": artist,
                 "album_name": album,
-                "duration": int(duration / 1000)  # Convert ms to seconds
+                "duration": int(duration / 1000),  # Convert ms to seconds
             }
             response = requests.get(lrclib_cache_url, params=params)
             if response.status_code == 200:
@@ -77,7 +84,7 @@ class LyricsAPI:
                 "track_name": song,
                 "artist_name": artist,
                 "album_name": album,
-                "duration": int(duration / 1000)  # Convert ms to seconds
+                "duration": int(duration / 1000),  # Convert ms to seconds
             }
             response = requests.get(lrclib_url, params=params)
             if response.status_code == 200:
@@ -127,11 +134,16 @@ class LyricsAPI:
             for line in lrc_lines:
                 # LRC format: [MM:SS.xx]Lyrics text
                 if line.startswith("[") and "]" in line:
-                    time_tag = line[1:line.find("]")]
-                    lyrics_text = line[line.find("]")+1:].strip()
+                    time_tag = line[1 : line.find("]")]
+                    lyrics_text = line[line.find("]") + 1 :].strip()
 
                     # Skip empty lyrics or metadata lines
-                    if not lyrics_text or time_tag.startswith("ar:") or time_tag.startswith("al:") or time_tag.startswith("ti:"):
+                    if (
+                        not lyrics_text
+                        or time_tag.startswith("ar:")
+                        or time_tag.startswith("al:")
+                        or time_tag.startswith("ti:")
+                    ):
                         continue
 
                     # Parse the timestamp (format: MM:SS.xx)
@@ -140,10 +152,9 @@ class LyricsAPI:
                             minutes, seconds = time_tag.split(":")
                             total_seconds = int(minutes) * 60 + float(seconds)
 
-                            formatted_data.append({
-                                "seconds": total_seconds,
-                                "lyrics": lyrics_text
-                            })
+                            formatted_data.append(
+                                {"seconds": total_seconds, "lyrics": lyrics_text}
+                            )
                     except ValueError:
                         continue
 
@@ -173,7 +184,7 @@ class SpotifyPlayer:
 
         Returns:
             Tuple of (song, album, artist, current_time, duration) or
-            (None, None, None, None, None) if no song is playing
+            (None, None, None, 0, 0) if no song is playing
         """
         try:
             track = self.spotify.currently_playing()
@@ -186,8 +197,10 @@ class SpotifyPlayer:
                 return song, album, artist, current_time, duration
         except Exception as e:
             logger.error(f"Exception in get_current_song: {str(e)}")
-            self._show_error("An error occurred while sending request to Spotify API, could be network issue, try refreshing. See logs for more details.")
-        return None, None, None, None, None
+            self._show_error(
+                "An error occurred while sending request to Spotify API, could be network issue, try refreshing. See logs for more details."
+            )
+        return None, None, None, 0, 0
 
     def get_current_playback_time(self):
         """
@@ -232,7 +245,9 @@ class LyricsOverlay(QLabel):
         if not token_info:
             token_info = sp_oauth.get_cached_token()
         if not token_info:
-            raise Exception("No token info available. Ensure authentication is complete.")
+            raise Exception(
+                "No token info available. Ensure authentication is complete."
+            )
 
         # Initialize Spotify player
         self.spotify_player = SpotifyPlayer(sp_oauth)
@@ -247,7 +262,9 @@ class LyricsOverlay(QLabel):
         self._setup_timers()
 
         # Set initial message
-        self.setText("<p style='font-size:20px; color:yellow;'>Widget loaded, waiting for song...</p>")
+        self.setText(
+            "<p style='font-size:20px; color:yellow;'>Widget loaded, waiting for song...</p>"
+        )
 
     def _initialize_attributes(self):
         """Initialize instance attributes."""
@@ -261,9 +278,9 @@ class LyricsOverlay(QLabel):
     def _configure_window(self):
         """Configure window properties."""
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setStyleSheet("color: white;")
@@ -295,7 +312,9 @@ class LyricsOverlay(QLabel):
         control_div_height = 40
         self.control_div = QWidget(self)
         self.control_div.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
-        self.control_div.setGeometry(0, self.height() - control_div_height, self.width(), control_div_height)
+        self.control_div.setGeometry(
+            0, self.height() - control_div_height, self.width(), control_div_height
+        )
 
         layout = QHBoxLayout(self.control_div)
         layout.setContentsMargins(10, 10, 10, 0)
@@ -304,8 +323,12 @@ class LyricsOverlay(QLabel):
 
         # Time label
         self.time_label = QLabel(self.control_div)
-        self.time_label.setStyleSheet("color: white; font-weight: bold; font-size: 12px;")
-        self.time_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+        self.time_label.setStyleSheet(
+            "color: white; font-weight: bold; font-size: 12px;"
+        )
+        self.time_label.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom
+        )
         layout.addWidget(self.time_label)
 
         # Refresh button
@@ -368,7 +391,9 @@ class LyricsOverlay(QLabel):
         if self.idleSearch > self.MAX_IDLE_SEARCHES:
             return
 
-        song, album, artist, current_time, duration = self.spotify_player.get_current_song()
+        song, album, artist, current_time, duration = (
+            self.spotify_player.get_current_song()
+        )
         self.current_time = current_time
         self.song_duration = duration
 
@@ -386,8 +411,10 @@ class LyricsOverlay(QLabel):
     def update_lyrics(self):
         """Update the lyrics display based on current playback time."""
         if self.idleSearch > self.MAX_IDLE_SEARCHES:
-            self.setText("<p style='font-size:20px; color:orange;'>No song playing...</p>"
-                         "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>")
+            self.setText(
+                "<p style='font-size:20px; color:orange;'>No song playing...</p>"
+                "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>"
+            )
             return
 
         # Fetch song and lyrics if not already done
@@ -412,7 +439,9 @@ class LyricsOverlay(QLabel):
         """Update the time display in the control panel."""
         if self.song_duration > 0:
             current_formatted = self._format_time(self.current_time)
-            duration_formatted = self._format_time(self.song_duration / 1000)  # Convert ms to seconds
+            duration_formatted = self._format_time(
+                self.song_duration / 1000
+            )  # Convert ms to seconds
             self.time_label.setText(f"{current_formatted} / {duration_formatted}")
         else:
             self.time_label.setText("0:00 / 0:00")
@@ -477,7 +506,7 @@ class LyricsOverlay(QLabel):
             space_index = text[:max_length].rfind(" ")
             if space_index != -1:
                 result += text[:space_index] + "<br/>"
-                text = text[space_index + 1:]
+                text = text[space_index + 1 :]
             else:
                 result += text[:max_length] + "<br/>"
                 text = text[max_length:]
