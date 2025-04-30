@@ -302,14 +302,16 @@ class LyricsOverlay(QLabel):
     def _setup_timers(self):
         """Set up timers for updating lyrics and checking for song changes."""
         # Timer for updating lyrics display
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_lyrics)
-        self.timer.start(self.REFRESH_INTERVAL)
+        self.lyrics_timer = QTimer(self)
+        self.lyrics_timer.timeout.connect(self.update_lyrics)
+        self.lyrics_timer.setInterval(self.REFRESH_INTERVAL)
+        self.lyrics_timer.start()
 
         # Timer for checking current song and fetching lyrics
         self.song_timer = QTimer(self)
         self.song_timer.timeout.connect(self.fetch_song_and_lyrics)
-        self.song_timer.start(self.SONG_CHECK_INTERVAL)
+        self.song_timer.setInterval(self.SONG_CHECK_INTERVAL)
+        self.song_timer.start()
 
     def _create_control_div(self):
         """Create the control panel with buttons and time display."""
@@ -389,10 +391,15 @@ class LyricsOverlay(QLabel):
         """Handle refresh button click."""
         self.isRefreshed = True
         self.idleSearch = 0
+        if not self.lyrics_timer.isActive():
+            self.lyrics_timer.start()
+        if not self.song_timer.isActive():
+            self.song_timer.start()
 
     def fetch_song_and_lyrics(self):
         """Fetch current song information and lyrics if needed."""
         if self.idleSearch > self.MAX_IDLE_SEARCHES:
+            self.song_timer.stop()
             return
 
         song, album, artist, current_time, duration = (
@@ -419,6 +426,7 @@ class LyricsOverlay(QLabel):
                 "<p style='font-size:20px; color:orange;'>No song playing...</p>"
                 "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>"
             )
+            self.lyrics_timer.stop()
             return
 
         # Fetch song and lyrics if not already done
