@@ -57,7 +57,6 @@ class LyricsOverlay(QLabel):
         self.song_duration = 0
         self.isRefreshed = False
         self.idleSearch = 0
-        self.update_count = 0
 
     def _setup_timers(self):
         self.timer = QTimer(self)
@@ -131,18 +130,19 @@ class LyricsOverlay(QLabel):
                     song = track["item"]["name"]
                     album = track["item"]["album"]["name"]
                     artist = track["item"]["artists"][0]["name"]
-                    duration = int(track["item"]["duration_ms"] / 1000)
-                    return song, album, artist, duration
+                    current_time = int(track["progress_ms"] / 1000)
+                    duration = track["item"]["duration_ms"]
+                    return song, album, artist, current_time, duration
                 else:
                     self.idleSearch += 1
-                    return None, None, None, None
+                    return None, None, None, None, None
         except Exception as e:
             self.idleSearch += 1
             logger.error(f"Exception in get_current_song: {str(e)}")
             QMessageBox.critical(globals.main_window, "Error", "An error occurred while sending request to spotify api, could be network issue, try refreshing. see logs for more details. ")
-        return None, None, None, None
+        return None, None, None, None, None
 
-    def get_song_lyrics(self, song, album, artist, duration):
+    def get_song_lyrics(self, song, album, artist):
         # First try lrclib.net's cache endpoint
         try:
             lrclib_cache_url = "https://lrclib.net/api/get_cache"
@@ -150,7 +150,7 @@ class LyricsOverlay(QLabel):
                 "track_name": song,
                 "artist_name": artist,
                 "album_name": album,
-                "duration": duration
+                "duration": int(self.song_duration / 1000)
             }
             response = requests.get(lrclib_cache_url, params=params)
             if response.status_code == 200:
@@ -171,7 +171,7 @@ class LyricsOverlay(QLabel):
                 "track_name": song,
                 "artist_name": artist,
                 "album_name": album,
-                "duration": duration
+                "duration": int(self.song_duration / 1000)
             }
             response = requests.get(lrclib_url, params=params)
             if response.status_code == 200:
@@ -243,11 +243,14 @@ class LyricsOverlay(QLabel):
     def fetch_song_and_lyrics(self):
         if self.idleSearch > 5:
             return
-        song, album, artist, duration = self.get_current_song()
+        song, album, artist, current_time, duration = self.get_current_song()
         if (song and song != self.current_song) or self.isRefreshed:
             self.isRefreshed = False
             self.current_song = song
-            self.lyrics_data = self.get_song_lyrics(song, album, artist, duration)
+            self.current_time = current_time
+            self.song_duration = duration
+            self.lyrics_data = self.get_song_lyrics(song, album, artist)
+        else:
             self.current_time = self.get_current_playback_time()
 
     @staticmethod
@@ -270,6 +273,15 @@ class LyricsOverlay(QLabel):
         return f"{minutes}:{seconds:02d}"
 
     def update_lyrics(self):
+        if self.idleSearch > 5:
+            self.setText("<p style='font-size:20px; color:orange;'>No song playing...</p>"
+                         "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>")
+            return
+
+        # Fetch song and lyrics if not already done
+        if self.current_song == "":
+            self.fetch_song_and_lyrics()
+
         # Update time display
         if self.song_duration > 0:
             current_formatted = self.format_time(self.current_time)
@@ -278,12 +290,7 @@ class LyricsOverlay(QLabel):
         else:
             self.time_label.setText("0:00 / 0:00")
 
-        if self.idleSearch > 5:
-            self.setText("<p style='font-size:20px; color:orange;'>No song playing...</p>"
-                         "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>")
-            return
-        if self.current_song == "":
-            self.fetch_song_and_lyrics()
+        # Update lyrics display
         if self.isRefreshed:
             self.setText("<p style='font-size:20px; color:orange;'>Refreshing...</p>")
             return
@@ -302,12 +309,7 @@ class LyricsOverlay(QLabel):
         else:
             self.setText("<p style='font-size:20px; color:cyan;'>No lyrics found.</p>")
 
-        # Sync time every 20 updates (10 seconds)
-        self.update_count = (self.update_count + 1) % 20
-        if self.update_count == 0:
-            self.current_time = self.get_current_playback_time()
-        else:
-            self.current_time += 0.5
+        self.current_time += 0.5
 
     def _find_current_lyric_index(self):
         """Find the index of the current lyric based on the current playback time."""
