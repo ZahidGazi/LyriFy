@@ -129,18 +129,63 @@ class LyricsOverlay(QLabel):
                 track = self.spotify.currently_playing()
                 if track and track["is_playing"]:
                     song = track["item"]["name"]
+                    album = track["item"]["album"]["name"]
                     artist = track["item"]["artists"][0]["name"]
-                    return song, artist
+                    duration = int(track["item"]["duration_ms"] / 1000)
+                    return song, album, artist, duration
                 else:
                     self.idleSearch += 1
-                    return None, None
+                    return None, None, None, None
         except Exception as e:
             self.idleSearch += 1
             logger.error(f"Exception in get_current_song: {str(e)}")
             QMessageBox.critical(globals.main_window, "Error", "An error occurred while sending request to spotify api, could be network issue, try refreshing. see logs for more details. ")
-        return None, None
+        return None, None, None, None
 
-    def get_song_lyrics(self, song, artist):
+    def get_song_lyrics(self, song, album, artist, duration):
+        # First try lrclib.net's cache endpoint
+        try:
+            lrclib_cache_url = "https://lrclib.net/api/get_cache"
+            params = {
+                "track_name": song,
+                "artist_name": artist,
+                "album_name": album,
+                "duration": duration
+            }
+            response = requests.get(lrclib_cache_url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    # Convert lrclib format to the format expected by the app
+                    formatted_data = self._format_lrclib_data(data)
+                    if formatted_data:
+                        logger.info(f"Lyrics found from lrclib cache for {song} by {artist}")
+                        return formatted_data
+        except Exception as e:
+            logger.error(f"Exception in get_song_lyrics (lrclib cache): {str(e)}")
+
+        # If cache fails, try lrclib.net's regular endpoint
+        try:
+            lrclib_url = "https://lrclib.net/api/get"
+            params = {
+                "track_name": song,
+                "artist_name": artist,
+                "album_name": album,
+                "duration": duration
+            }
+            response = requests.get(lrclib_url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    # Convert lrclib format to the format expected by the app
+                    formatted_data = self._format_lrclib_data(data)
+                    if formatted_data:
+                        logger.info(f"Lyrics found from lrclib for {song} by {artist}")
+                        return formatted_data
+        except Exception as e:
+            logger.error(f"Exception in get_song_lyrics (lrclib): {str(e)}")
+
+        # If both lrclib endpoints fail, fall back to textyl's API
         query = f"{song} {artist}"
         url = f"https://api.textyl.co/api/lyrics?q={query}"
         try:
@@ -148,20 +193,61 @@ class LyricsOverlay(QLabel):
             if response.status_code == 200:
                 data = response.json()
                 if data:
+                    logger.info(f"Lyrics found from textyl for {song} by {artist}")
                     return data
         except Exception as e:
-            logger.error(f"Exception in get_song_lyrics: {str(e)}")
+            logger.error(f"Exception in get_song_lyrics (textyl): {str(e)}")
             QMessageBox.critical(globals.main_window, "Error", "An error occurred while fetching lyrics, could be network issue, try refreshing. see logs for more details. ")
         return []
+
+    def _format_lrclib_data(self, lrclib_data):
+        """Convert lrclib.net data format to the format expected by the app."""
+        try:
+            if not lrclib_data or not lrclib_data.get("syncedLyrics"):
+                return []
+
+            formatted_data = []
+            # Parse the synced lyrics which are in LRC format
+            lrc_lines = lrclib_data["syncedLyrics"].strip().split("\n")
+
+            for line in lrc_lines:
+                # LRC format: [MM:SS.xx]Lyrics text
+                if line.startswith("[") and "]" in line:
+                    time_tag = line[1:line.find("]")]
+                    lyrics_text = line[line.find("]")+1:].strip()
+
+                    # Skip empty lyrics or metadata lines
+                    if not lyrics_text or time_tag.startswith("ar:") or time_tag.startswith("al:") or time_tag.startswith("ti:"):
+                        continue
+
+                    # Parse the timestamp (format: MM:SS.xx)
+                    try:
+                        if ":" in time_tag:
+                            minutes, seconds = time_tag.split(":")
+                            total_seconds = int(minutes) * 60 + float(seconds)
+
+                            formatted_data.append({
+                                "seconds": total_seconds,
+                                "lyrics": lyrics_text
+                            })
+                    except ValueError:
+                        continue
+
+            # Sort by timestamp
+            formatted_data.sort(key=lambda x: x["seconds"])
+            return formatted_data
+        except Exception as e:
+            logger.error(f"Error formatting lrclib data: {str(e)}")
+            return []
 
     def fetch_song_and_lyrics(self):
         if self.idleSearch > 5:
             return
-        song, artist = self.get_current_song()
+        song, album, artist, duration = self.get_current_song()
         if (song and song != self.current_song) or self.isRefreshed:
             self.isRefreshed = False
             self.current_song = song
-            self.lyrics_data = self.get_song_lyrics(song, artist)
+            self.lyrics_data = self.get_song_lyrics(song, album, artist, duration)
             self.current_time = self.get_current_playback_time()
 
     @staticmethod
