@@ -25,10 +25,10 @@ class LyricsAPI:
             List of lyrics data or empty list if no lyrics found
         """
         # Try lrclib.net's cache endpoint first
-        lyrics_data = LyricsAPI._try_lrclib_cache(song, album, artist, duration)
-        if lyrics_data:
-            logger.info(f"Lyrics found from lrclib cache for {song} by {artist}")
-            return lyrics_data
+        # lyrics_data = LyricsAPI._try_lrclib_cache(song, album, artist, duration)
+        # if lyrics_data:
+        #     logger.info(f"Lyrics found from lrclib cache for {song} by {artist}")
+        #     return lyrics_data
 
         # Then try lrclib.net's regular endpoint
         lyrics_data = LyricsAPI._try_lrclib_api(song, album, artist, duration)
