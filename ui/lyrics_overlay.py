@@ -1,8 +1,12 @@
+import warnings
+
 import requests
 import spotipy
 from PyQt6.QtWidgets import QLabel, QHBoxLayout, QWidget, QPushButton, QStyle, QApplication, QMessageBox
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIcon
+from urllib3.exceptions import InsecureRequestWarning
+
 import globals
 
 from logger import logger
@@ -88,13 +92,15 @@ class LyricsAPI:
     def _try_textyl_api(song, artist):
         """Try to fetch lyrics from textyl's API."""
         try:
-            query = f"{song} {artist}"
-            url = f"https://api.textyl.co/api/lyrics?q={query}"
-            response = requests.get(url, verify=False)
-            if response.status_code == 200:
-                data = response.json()
-                if data:
-                    return data
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", InsecureRequestWarning)
+                query = f"{song} {artist}"
+                url = f"https://api.textyl.co/api/lyrics?q={query}"
+                response = requests.get(url, verify=False)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data:
+                        return data
         except Exception as e:
             logger.error(f"Exception in _try_textyl_api: {str(e)}")
         return []
