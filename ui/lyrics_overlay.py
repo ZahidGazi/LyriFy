@@ -43,18 +43,24 @@ class LyricsAPI:
         # if lyrics_data:
         #     logger.info(f"Lyrics found from lrclib cache for {song} by {artist}")
         #     return lyrics_data
+        # else:
+        #     logger.debug(f"Lyrics not found from lrclib cache for {song} by {artist}")
 
         # Then try lrclib.net's regular endpoint
         lyrics_data = LyricsAPI._try_lrclib_api(song, album, artist, duration)
         if lyrics_data:
             logger.info(f"Lyrics found from lrclib for {song} by {artist}")
             return lyrics_data
+        else:
+            logger.debug(f"Lyrics not found from lrclib for {song} by {artist}")
 
         # Finally fall back to textyl's API
         lyrics_data = LyricsAPI._try_textyl_api(song, artist)
         if lyrics_data:
             logger.info(f"Lyrics found from textyl for {song} by {artist}")
             return lyrics_data
+        else:
+            logger.debug(f"Lyrics not found from textyl for {song} by {artist}")
 
         return []
 
@@ -397,8 +403,12 @@ class LyricsOverlay(QLabel):
             self.timer.stop()
             return
 
+        # Check if the song has ended
+        if self.current_time * 1000 > self.song_duration:
+            self.updateCount = 0
+            self.fetch_song_and_lyrics()
         # Update current song every 5 seconds (10 x 500ms)
-        if self.updateCount == 0:
+        elif self.updateCount == 0:
             self.fetch_song_and_lyrics()
 
         # Update lyrics every 500ms
@@ -445,7 +455,7 @@ class LyricsOverlay(QLabel):
     def _update_time_display(self):
         """Update the time display in the control panel."""
         if self.song_duration > 0:
-            current_formatted = self._format_time(self.current_time)
+            current_formatted = self._format_time(min([self.current_time, self.song_duration / 1000]))
             duration_formatted = self._format_time(
                 self.song_duration / 1000
             )  # Convert ms to seconds
