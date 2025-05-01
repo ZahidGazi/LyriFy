@@ -231,7 +231,6 @@ class LyricsOverlay(QLabel):
     """A floating overlay widget that displays synchronized lyrics for the current Spotify song."""
 
     REFRESH_INTERVAL = 500  # ms
-    SONG_CHECK_INTERVAL = 5000  # ms
     MAX_IDLE_SEARCHES = 5
 
     def __init__(self, sp_oauth, token_info, parent=None):
@@ -276,8 +275,8 @@ class LyricsOverlay(QLabel):
         self.lyrics_data = []
         self.current_time = 1
         self.song_duration = 0
-        self.isRefreshed = False
         self.idleSearch = 0
+        self.updateCount = 0
 
     def _configure_window(self):
         """Configure window properties."""
@@ -301,17 +300,10 @@ class LyricsOverlay(QLabel):
 
     def _setup_timers(self):
         """Set up timers for updating lyrics and checking for song changes."""
-        # Timer for updating lyrics display
-        self.lyrics_timer = QTimer(self)
-        self.lyrics_timer.timeout.connect(self.update_lyrics)
-        self.lyrics_timer.setInterval(self.REFRESH_INTERVAL)
-        self.lyrics_timer.start()
-
-        # Timer for checking current song and fetching lyrics
-        self.song_timer = QTimer(self)
-        self.song_timer.timeout.connect(self.fetch_song_and_lyrics)
-        self.song_timer.setInterval(self.SONG_CHECK_INTERVAL)
-        self.song_timer.start()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.do_timer_event)
+        self.timer.setInterval(self.REFRESH_INTERVAL)
+        self.timer.start()
 
     def _create_control_div(self):
         """Create the control panel with buttons and time display."""
@@ -389,27 +381,45 @@ class LyricsOverlay(QLabel):
 
     def do_refresh(self):
         """Handle refresh button click."""
-        self.isRefreshed = True
+        self.setText("<p style='font-size:20px; color:orange;'>Refreshing...</p>")
         self.idleSearch = 0
-        if not self.lyrics_timer.isActive():
-            self.lyrics_timer.start()
-        if not self.song_timer.isActive():
-            self.song_timer.start()
+        if not self.timer.isActive():
+            self.updateCount = 0
+            self.timer.start()
+
+    def do_timer_event(self):
+        """Handle timer events for updating lyrics and song information."""
+        if self.idleSearch > self.MAX_IDLE_SEARCHES:
+            self.setText(
+                "<p style='font-size:20px; color:orange;'>No song playing...</p>"
+                "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>"
+            )
+            self.timer.stop()
+            return
+
+        # Update current song every 5 seconds (10 x 500ms)
+        if self.updateCount == 0:
+            self.fetch_song_and_lyrics()
+
+        # Update lyrics every 500ms
+        self.update_lyrics()
+
+        # Increment current time for next update
+        self.current_time += 0.5
+
+        # Keep track of update count
+        self.updateCount = (self.updateCount + 1) % 10
 
     def fetch_song_and_lyrics(self):
         """Fetch current song information and lyrics if needed."""
-        if self.idleSearch > self.MAX_IDLE_SEARCHES:
-            self.song_timer.stop()
-            return
-
         song, album, artist, current_time, duration = (
             self.spotify_player.get_current_song()
         )
         self.current_time = current_time
         self.song_duration = duration
 
-        if (song and song != self.current_song) or self.isRefreshed:
-            self.isRefreshed = False
+        if song and song != self.current_song:
+            self.setText("<p style='font-size:20px; color:cyan;'>Loading lyrics...</p>")
             self.current_song = song
 
             # Fetch lyrics for the new song
@@ -421,31 +431,16 @@ class LyricsOverlay(QLabel):
 
     def update_lyrics(self):
         """Update the lyrics display based on current playback time."""
-        if self.idleSearch > self.MAX_IDLE_SEARCHES:
-            self.setText(
-                "<p style='font-size:20px; color:orange;'>No song playing...</p>"
-                "<p style='font-size:15px; color:gray;'>Please play a song on Spotify and Refresh.</p>"
-            )
-            self.lyrics_timer.stop()
-            return
-
-        # Fetch song and lyrics if not already done
-        if self.current_song == "":
-            self.fetch_song_and_lyrics()
-
         # Update time display
         self._update_time_display()
 
         # Update lyrics display
-        if self.isRefreshed:
-            self.setText("<p style='font-size:20px; color:orange;'>Refreshing...</p>")
+        if self.song_duration == 0:
+            self.setText("<p style='font-size:20px; color:orange;'>No song playing...</p>")
         elif self.lyrics_data:
             self._update_lyrics_display()
         else:
             self.setText("<p style='font-size:20px; color:cyan;'>No lyrics found.</p>")
-
-        # Increment current time for next update
-        self.current_time += 0.5
 
     def _update_time_display(self):
         """Update the time display in the control panel."""
