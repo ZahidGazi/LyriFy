@@ -1,7 +1,9 @@
+from logger import logger
+from urllib3.exceptions import InsecureRequestWarning
 import warnings
-
 import requests
 import spotipy
+import globals
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import (
@@ -12,10 +14,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QWidget,
 )
-from urllib3.exceptions import InsecureRequestWarning
-
-import globals
-from logger import logger
 
 
 class LyricsAPI:
@@ -41,7 +39,7 @@ class LyricsAPI:
         # Try lrclib.net's cache endpoint first
         # lyrics_data = LyricsAPI._try_lrclib_cache(song, album, artist, duration)
         # if lyrics_data:
-        #     logger.info(f"Lyrics found from lrclib cache for {song} by {artist}")
+        #     logger.debug(f"Lyrics found from lrclib cache for {song} by {artist}")
         #     return lyrics_data
         # else:
         #     logger.debug(f"Lyrics not found from lrclib cache for {song} by {artist}")
@@ -49,7 +47,7 @@ class LyricsAPI:
         # Then try lrclib.net's regular endpoint
         lyrics_data = LyricsAPI._try_lrclib_api(song, album, artist, duration)
         if lyrics_data:
-            logger.info(f"Lyrics found from lrclib for {song} by {artist}")
+            logger.debug(f"Lyrics found from lrclib for {song} by {artist}")
             return lyrics_data
         else:
             logger.debug(f"Lyrics not found from lrclib for {song} by {artist}")
@@ -57,7 +55,7 @@ class LyricsAPI:
         # Finally fall back to textyl's API
         lyrics_data = LyricsAPI._try_textyl_api(song, artist)
         if lyrics_data:
-            logger.info(f"Lyrics found from textyl for {song} by {artist}")
+            logger.debug(f"Lyrics found from textyl for {song} by {artist}")
             return lyrics_data
         else:
             logger.debug(f"Lyrics not found from textyl for {song} by {artist}")
@@ -277,9 +275,9 @@ class LyricsOverlay(QLabel):
 
     def _initialize_attributes(self):
         """Initialize instance attributes."""
-        self.current_song = ""
+        self.current_song = None
         self.lyrics_data = []
-        self.current_time = 1
+        self.current_time = 0
         self.song_duration = 0
         self.idleSearch = 0
         self.updateCount = 0
@@ -404,7 +402,7 @@ class LyricsOverlay(QLabel):
             return
 
         # Check if the song has ended
-        if self.current_time * 1000 > self.song_duration:
+        if self.current_song and self.current_time * 1000 > self.song_duration:
             self.updateCount = 0
             self.fetch_song_and_lyrics()
         # Update current song every 5 seconds (10 x 500ms)
@@ -428,16 +426,17 @@ class LyricsOverlay(QLabel):
         self.current_time = current_time
         self.song_duration = duration
 
-        if song and song != self.current_song:
-            self.setText("<p style='font-size:20px; color:cyan;'>Loading lyrics...</p>")
-            self.current_song = song
+        if song:
+            self.idleSearch = 0
+            if song != self.current_song:
+                self.setText("<p style='font-size:20px; color:cyan;'>Loading lyrics...</p>")
+                self.current_song = song
 
-            # Fetch lyrics for the new song
-            self.lyrics_data = LyricsAPI.fetch_lyrics(song, album, artist, duration)
+                # Fetch lyrics for the new song
+                self.lyrics_data = LyricsAPI.fetch_lyrics(song, album, artist, duration)
         else:
             # Increment idle search counter if no song is playing
-            if not song:
-                self.idleSearch += 1
+            self.idleSearch += 1
 
     def update_lyrics(self):
         """Update the lyrics display based on current playback time."""
